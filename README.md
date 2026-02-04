@@ -54,7 +54,7 @@ Si quieres clonar y probar este proyecto (necesitarás tus propias API Keys):
     QDRANT_URL="[https://tu-instancia-qdrant.com](https://tu-instancia-qdrant.com)"
     QDRANT_API_KEY="tu-key"
     QDRANT_COLLECTION="nombre-coleccion"
-    AGENDA_CONCIERTOS="url-csv-publico" (creado en Google Sheet)
+    AGENDA_CONCIERTOS="url-csv-publico" # Creado en Google Sheet
     ```
 
 4.  **Ejecutar:**
