@@ -75,5 +75,3 @@ Si quieres clonar y probar este proyecto (necesitarás tus propias API Keys):
 ## 🛡️ Licencia
 
 Este proyecto es una herramienta interna para [Arrojo](https://arrojorock.es). El código es libre para fines educativos.
-
-```
