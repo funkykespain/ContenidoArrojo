@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+from datetime import datetime
 from dotenv import load_dotenv
 import requests
 from operator import itemgetter
@@ -220,6 +221,10 @@ def get_chain():
     # E. Prompt del Sistema (Personalidad "Arrojer")
     # Define la voz, el tono y las reglas de negocio del agente.
     system_prompt = """
+    # Contexto Temporal
+    HOY ES: {current_date}
+    Usa esta fecha para calcular tiempos relativos (ej: "este viernes", "mañana", "la semana que viene") y para saber si los conciertos de la agenda ya han pasado o son futuros.
+
     # Identidad
     Eres el Community Manager de la banda de rock "Arrojo". Tu voz es "Estilo Arrojer": canalla, pasional, pero sobre todo CERCANA.
     No eres un altavoz de noticias, eres un colega contándole una novedad a otro colega en la barra de un bar.
@@ -273,6 +278,7 @@ def get_chain():
             "context": rag_query_generator | retriever,
             # Pasamos el resto de variables directamente
             "agenda_context": itemgetter("agenda_context"),
+            "current_date": itemgetter("current_date"),
             "platform": itemgetter("platform"),
             "media_type": itemgetter("media_type"),
             "reason": itemgetter("reason"),
@@ -428,8 +434,11 @@ if submitted:
                 
                 # 3. Preparar datos para el prompt
                 specific_data_str = str(specific_data)
+
+                # 4. Obtener fecha actual en formato legible
+                today_str = datetime.now().strftime("%d/%m/%Y")
                 
-                # 4. Invocar al Agente
+                # 5. Invocar al Agente
                 response = chain.invoke({
                     "platform": platform,
                     "media_type": media_type,
@@ -438,10 +447,11 @@ if submitted:
                     "visual_context": visual_context,
                     "user_instructions": user_instructions,
                     "tone_modifier": tone,
-                    "agenda_context": agenda_text
+                    "agenda_context": agenda_text,
+                    "current_date": today_str
                 })
                 
-                # 5. Renderizar Resultados (Estilo Tarjeta)
+                # 6. Renderizar Resultados (Estilo Tarjeta)
                 st.success("¡Copy Generado con éxito! 🤘")
                 
                 st.markdown("### 📋 Copy Final")
