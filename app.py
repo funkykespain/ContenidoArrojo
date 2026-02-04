@@ -5,17 +5,15 @@ import requests
 from operator import itemgetter
 from langchain_qdrant import QdrantVectorStore
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-
-# --- CORRECCIÓN DE IMPORTS (Solución al error anterior) ---
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnablePassthrough
-# ----------------------------------------------------------
-
 from pydantic import BaseModel, Field
 from qdrant_client import QdrantClient
 
-# Leemos la agenda de conciertos desde la URL (CSV público de Google Sheets)
-@st.cache_data(ttl=3600) # Cachear 1 hora para no saturar
+# --- 0. FUNCIONES DE UTILIDAD ---
+
+# Función para obtener datos en tiempo real (Agenda de Conciertos)
+# Utilizamos caché para no saturar la API de Google Sheets en cada recarga.
+@st.cache_data(ttl=3600) 
 def fetch_agenda_data():
     url = os.getenv("AGENDA_CONCIERTOS")
     if not url:
@@ -27,27 +25,31 @@ def fetch_agenda_data():
     except Exception as e:
         return f"Error leyendo agenda: {str(e)}"
 
-# --- 1. CONFIGURACIÓN E INICIALIZACIÓN ---
+# --- 1. CONFIGURACIÓN INICIAL DEL PROYECTO ---
 load_dotenv()
 
-# URLs de los logos
+# URLs de los activos de marca (Logos oficiales)
 LOGO_URL_LARGE = "https://arrojorock.es/android-chrome-192x192.png"
 LOGO_URL_SMALL = "https://arrojorock.es/favicon-32x32.png"
 
+# Configuración de la página de Streamlit
 st.set_page_config(
     page_title="Arrojo Content Generator",
-    page_icon=LOGO_URL_SMALL, # Icono en la pestaña del navegador
+    page_icon=LOGO_URL_SMALL,
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# --- ESTILOS CSS PERSONALIZADOS (THEME ARROJO) ---
+# --- 2. ESTILOS VISUALES (CSS INYECTADO) ---
+# Adaptamos la interfaz de Streamlit para que coincida con el branding de ArrojoRock.es
+# - Tipografías: Montserrat y Roboto.
+# - Colores: Fondo negro (#0e0e0e) y acentos en rojo corporativo (#e74c3c).
 st.markdown("""
 <style>
     /* IMPORTAR FUENTES OFICIALES */
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Roboto:wght@300;400&display=swap');
 
-    /* --- VARIABLES GLOBALES (Mapeo de tu styles.css) --- */
+    /* VARIABLES DE TEMA */
     :root {
         --color-primary: #e74c3c;
         --color-primary-dark: #c0392b;
@@ -57,7 +59,7 @@ st.markdown("""
         --text-body: #cccccc;
     }
 
-    /* --- FONDO Y TEXTO GENERAL --- */
+    /* ESTILOS GENERALES DE LA APP */
     .stApp {
         background-color: var(--bg-dark);
         font-family: 'Roboto', sans-serif;
@@ -75,21 +77,19 @@ st.markdown("""
         letter-spacing: -1px;
     }
 
-    /* --- SIDEBAR (Barra Lateral) --- */
+    /* BARRA LATERAL */
     section[data-testid="stSidebar"] {
         background-color: #000000;
         border-right: 1px solid #333;
     }
     
-    /* Títulos del sidebar */
     section[data-testid="stSidebar"] h1, 
     section[data-testid="stSidebar"] h2, 
     section[data-testid="stSidebar"] h3 {
         color: var(--color-primary) !important;
     }
 
-    /* --- INPUTS (Cajas de texto y Selects) --- */
-    /* Fondo oscuro para inputs */
+    /* FORMULARIOS E INPUTS */
     .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {
         background-color: var(--bg-card) !important;
         color: white !important;
@@ -97,20 +97,18 @@ st.markdown("""
         border-radius: 10px !important;
     }
     
-    /* Efecto Focus (Borde Rojo) */
     .stTextInput input:focus, .stTextArea textarea:focus {
         border-color: var(--color-primary) !important;
         box-shadow: 0 0 5px rgba(231, 76, 60, 0.5) !important;
     }
 
-    /* Etiquetas de los inputs */
     .stTextInput label, .stSelectbox label, .stTextArea label {
         color: #999 !important;
         font-size: 0.9rem !important;
         font-weight: 600 !important;
     }
 
-    /* --- BOTONES (Estilo Rockero) --- */
+    /* BOTONES PERSONALIZADOS */
     div.stButton > button {
         background: linear-gradient(45deg, var(--color-primary), var(--color-primary-dark)) !important;
         color: white !important;
@@ -134,62 +132,62 @@ st.markdown("""
         transform: translateY(1px);
     }
 
-    /* --- RESULTADOS (Estilo Tarjeta / Code Block) --- */
+    /* BLOQUES DE RESULTADOS */
     .stCode {
         background-color: #111 !important;
         border: 1px solid #333;
         border-radius: 10px;
     }
     
-    /* Separadores */
-    hr {
-        border-color: #333 !important;
-    }
+    hr { border-color: #333 !important; }
     
-    /* Alertas y Mensajes */
     .stAlert {
         background-color: var(--bg-card) !important;
         color: white !important;
         border: 1px solid #333;
     }
     
-    /* Slider (Tono) */
+    /* SLIDERS */
     div[data-baseweb="slider"] div[role="slider"] {
         background-color: var(--color-primary) !important;
     }
     .stSlider div[data-baseweb="slider"] > div > div {
-        background-color: #333 !important; /* Riel inactivo */
+        background-color: #333 !important;
     }
 
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. BACKEND: LÓGICA LANGCHAIN Y RAG ---
+# --- 3. BACKEND (LANGCHAIN + RAG) ---
 
 @st.cache_resource
 def get_chain():
     """
-    Inicializa la conexión con LLM y VectorStore.
-    Se cachea para no reconectar en cada interacción.
+    Configura y devuelve la cadena de procesamiento (Chain).
+    Se usa @st.cache_resource para mantener la conexión abierta y no reconectar en cada interacción.
     """
+    # Credenciales y Configuración
     api_key = os.getenv("OPENROUTER_API_KEY")
     base_url = os.getenv("OPENROUTER_BASE_URL")
     qdrant_url = os.getenv("QDRANT_URL")
+    qdrant_key = os.getenv("QDRANT_API_KEY")
     collection_name = os.getenv("QDRANT_COLLECTION")
 
-    # A. Configurar Embeddings (Debe coincidir con n8n: Qwen3-8B vía OpenRouter)
+    # A. Modelo de Embeddings
+    # Debe coincidir exactamente con el usado en la ingesta de datos (n8n).
     embeddings = OpenAIEmbeddings(
         model="qwen/qwen3-embedding-8b",
         openai_api_key=api_key,
         openai_api_base=base_url
     )
 
-    # B. Conectar a Qdrant
+    # B. Conexión a Base de Datos Vectorial (Qdrant)
+    # Configuramos el cliente con soporte HTTPS y puerto seguro.
     client = QdrantClient(
         url=qdrant_url,
         port=443,
         https=True,
-        api_key=os.getenv("QDRANT_API_KEY"),
+        api_key=qdrant_key,
         timeout=20
     )
     vectorstore = QdrantVectorStore(
@@ -197,17 +195,20 @@ def get_chain():
         collection_name=collection_name,
         embedding=embeddings
     )
+    # El retriever buscará los 3 fragmentos más relevantes
     retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
 
-    # C. Configurar LLM (Gemini 2.0 Flash vía OpenRouter)
+    # C. Modelo de Lenguaje (LLM)
+    # Usamos Llama 3.3 70B por su capacidad de razonamiento y coste eficiente.
     llm = ChatOpenAI(
         model="meta-llama/llama-3.3-70b-instruct",
         openai_api_key=api_key,
         openai_api_base=base_url,
-        temperature=0.7 # Un poco de creatividad para el copy
+        temperature=0.7 # Temperatura media para balancear creatividad y precisión
     )
 
-    # D. Estructura de Salida (JSON)
+    # D. Definición de la Estructura de Salida
+    # Obligamos al LLM a devolver un JSON estricto.
     class SocialPost(BaseModel):
         platform: str = Field(description="Plataforma seleccionada")
         copy_text: str = Field(description="El texto del post listo para copiar, con emojis y estructura")
@@ -216,7 +217,8 @@ def get_chain():
 
     structured_llm = llm.with_structured_output(SocialPost)
 
-    # E. Prompt del Sistema (MEGA-PROMPT ARROJO)
+    # E. Prompt del Sistema (Personalidad "Arrojer")
+    # Define la voz, el tono y las reglas de negocio del agente.
     system_prompt = """
     # Identidad
     Eres el Community Manager de la banda de rock "Arrojo". Tu voz es "Estilo Arrojer": canalla, pasional, pero sobre todo CERCANA.
@@ -227,19 +229,20 @@ def get_chain():
     2. **Uso de 'Arrojers':** PROHIBIDO usar "Arrojers" en el título o en la frase de apertura. Úsalo con mucha moderación, máximo 1 vez por post y preferiblemente en el cierre o cuerpo, nunca gritando.
     3. **Dieta de Emojis:** MÁXIMO 2 o 3 emojis en TODO el texto. Si pones más, pierdes credibilidad. No uses emojis de relleno (como poner una guitarra cada vez que dices música). Solo úsalos para enfatizar un golpe emocional real.
     4. **Cero Clichés de IA:** Prohibido usar frases como "Noche inolvidable", "Lo vamos a romper", "Prepárense". Sé específico y real, una banda auténtica de rock castizo y cañero que evita frases hechas.
+    
     # Estrategia de Contenido y CTAs
     - **Si es CONCIERTO (reason 1):**
       * CTA 1 (Obligatorio): Link de venta de entradas.
       * CTA 2 (Creativo): Debes incitar a que escuchen los temas ANTES del concierto. Diles que vayan con las letras aprendidas para dejarse la voz. Enlaza a Spotify para "hacer los deberes".
     
-    # Contexto RAG (Datos Reales)
+    # Contexto RAG (Datos Reales de la Banda)
     {context}
 
     # Agenda de Conciertos (Histórico y Futuro - CSV Oficial)
     Usa esta tabla para verificar fechas, ver si hemos tocado antes en esa ciudad o recordar hitos pasados:
     {agenda_context}
 
-    # Instrucciones Específicas
+    # Instrucciones Específicas de la Solicitud
     Genera un post para la plataforma {platform} con formato {media_type}.
     
     MOTIVO DEL POST: {reason}
@@ -248,7 +251,7 @@ def get_chain():
     INSTRUCCIONES EXTRA: {user_instructions}
     TONO: {tone_modifier}
 
-    # Links Maestros (Si el usuario no provee uno específico)
+    # Links Maestros (Fallback si el usuario no provee uno específico)
     - Entradas/Web/Info oficial: https://arrojorock.es
     - Spotify: https://open.spotify.com/artist/4s0uEp9gcIcvU1ZEsDKQXv
     - YouTube: https://www.youtube.com/channel/UCJnAZC6v6OfKxNydcD6CFqQ
@@ -258,16 +261,17 @@ def get_chain():
 
     prompt = ChatPromptTemplate.from_template(system_prompt)
 
-    # F. Crear la cadena (CORREGIDA)
-    # Definimos qué texto usamos para buscar en la BD (RAG)
-    # Concatenamos motivo + datos + instrucciones para que la búsqueda sea precisa
+    # F. Construcción de la Cadena (Chain)
+    # Generamos un string de búsqueda optimizado para RAG concatenando los inputs clave.
     rag_query_generator = (
         lambda x: f"{x['reason']} {x['specific_data']} {x['user_instructions']}"
     )
 
     chain = (
         {
-            "context": rag_query_generator | retriever,  # Ahora buscamos con texto, no con diccionarios
+            # Pasamos la query generada al retriever para buscar contexto
+            "context": rag_query_generator | retriever,
+            # Pasamos el resto de variables directamente
             "agenda_context": itemgetter("agenda_context"),
             "platform": itemgetter("platform"),
             "media_type": itemgetter("media_type"),
@@ -283,9 +287,9 @@ def get_chain():
     
     return chain
 
-# --- 3. FRONTEND: STREAMLIT UI ---
+# --- 4. FRONTEND: INTERFAZ DE USUARIO (STREAMLIT) ---
 
-# Título con Logo Oficial (Integrado con HTML para mejor alineación)
+# Cabecera con Logo y Título
 st.markdown(f"""
     <div style="display: flex; align-items: center; gap: 15px;">
         <img src="{LOGO_URL_LARGE}" alt="Logo Arrojo" style="width: 60px; height: 60px; border-radius: 10px;">
@@ -295,14 +299,14 @@ st.markdown(f"""
 
 st.markdown("Generador de copys con **RAG** (Base de Conocimiento) y **Estilo Arrojer**.")
 
-# --- Sidebar: Configuración Global ---
+# --- Barra Lateral: Configuración General ---
 with st.sidebar:
     st.header("📢 Configuración")
     platform = st.selectbox("Plataforma", ["Instagram (Feed)", "Instagram (Stories)", "TikTok", "Facebook", "WhatsApp Channel", "YouTube (Video)", "YouTube (Shorts)"])
     media_type = st.selectbox("Formato Multimedia", ["Vídeo", "Foto", "Carrusel", "Solo Texto"])
     tone = st.select_slider("Tono del Mensaje", options=["Serio/Informativo", "Normal", "Canalla (Default)", "Urgente/Hype", "Emotivo"], value="Canalla (Default)")
 
-    # --- Enlace a Documentación ---
+    # Enlace discreto a documentación técnica
     st.markdown("---")
     st.markdown(
         """
@@ -316,9 +320,10 @@ with st.sidebar:
         """, 
         unsafe_allow_html=True
     )
-# --- Área Principal: Formulario Dinámico ---
 
-# Selector de Motivo
+# --- Área Principal: Formulario de Contenido ---
+
+# Selección del Caso de Uso
 reason = st.selectbox("¿Cuál es el motivo de la publicación?", [
     "1. Concierto",
     "2. Anuncio de Novedad",
@@ -332,15 +337,15 @@ reason = st.selectbox("¿Cuál es el motivo de la publicación?", [
 
 st.divider()
 
-# Formulario específico según motivo
-specific_data = {} # Aquí guardaremos los datos limpios para el LLM
+# Contenedor para datos específicos según el motivo seleccionado
+specific_data = {} 
 
 with st.form("main_form"):
     st.subheader("📝 Detalles del Contenido")
     
     col1, col2 = st.columns(2)
     
-    # Campos comunes
+    # Campos comunes para cualquier tipo de publicación
     with col1:
         visual_context = st.text_area("Contexto Visual (¿Qué se ve?)", placeholder="Ej: Foto de Kyke saltando, primer plano guitarra...")
     with col2:
@@ -348,14 +353,13 @@ with st.form("main_form"):
 
     st.markdown("### 🎯 Datos Específicos")
 
-    # LÓGICA CONDICIONAL DE CAMPOS
+    # Lógica condicional para mostrar solo los campos necesarios
     if reason == "1. Concierto":
         c1, c2 = st.columns(2)
         date = c1.text_input("Fecha", placeholder="DD/MM")
         city = c2.text_input("Ciudad")
         venue = c1.text_input("Lugar/Sala")
         
-        # Lógica del Link corregida
         link_type = c2.radio("Tipo de Enlace", ["Venta de Entradas", "Ubicación/Web Sala (Sin venta)"], horizontal=True)
         link_url = st.text_input("URL del enlace")
         
@@ -405,10 +409,10 @@ with st.form("main_form"):
         quote = st.text_area("Cita destacada (Opcional)")
         specific_data = {"media_name": media_name, "link": link_media, "quote": quote}
 
-    # Botón de Generación
+    # Botón de Acción Principal
     submitted = st.form_submit_button("🔥 Generar Copy Arrojer")
 
-# --- 4. EJECUCIÓN ---
+# --- 5. EJECUCIÓN Y VISUALIZACIÓN ---
 
 if submitted:
     if not os.getenv("OPENROUTER_API_KEY"):
@@ -416,16 +420,16 @@ if submitted:
     else:
         with st.spinner("🎸 Afinando guitarras, leyendo la agenda y consultando la base de datos..."):
             try:
-                # 1. Obtener la cadena
+                # 1. Inicializar la cadena de LangChain
                 chain = get_chain()
                 
-                # 1.5 OBTENER LA AGENDA (NUEVO)
+                # 2. Descargar datos de agenda en tiempo real
                 agenda_text = fetch_agenda_data()
                 
-                # 2. Convertir diccionario specific_data a string
+                # 3. Preparar datos para el prompt
                 specific_data_str = str(specific_data)
                 
-                # 3. Invocar
+                # 4. Invocar al Agente
                 response = chain.invoke({
                     "platform": platform,
                     "media_type": media_type,
@@ -437,16 +441,15 @@ if submitted:
                     "agenda_context": agenda_text
                 })
                 
-                # 4. Mostrar Resultados (ESTILO ARROJO WEB)
+                # 5. Renderizar Resultados (Estilo Tarjeta)
                 st.success("¡Copy Generado con éxito! 🤘")
                 
                 st.markdown("### 📋 Copy Final")
                 
-                # Usamos un container para el texto principal
                 with st.container():
                     st.code(response.copy_text, language="markdown")
                 
-                # Tarjetas inferiores para datos extra
+                # Columnas para metadatos (Hashtags y Sugerencia visual)
                 c1, c2 = st.columns(2)
                 with c1:
                     st.markdown("""
@@ -464,6 +467,5 @@ if submitted:
                     </div>
                     """.format(response.visual_suggestion), unsafe_allow_html=True)
 
-            # --- ESTO ES LO QUE FALTABA ---
             except Exception as e:
                 st.error(f"Error al generar: {str(e)}")
