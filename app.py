@@ -174,7 +174,7 @@ def get_chain():
     collection_name = os.getenv("QDRANT_COLLECTION")
 
     # A. Modelo de Embeddings
-    # Debe coincidir exactamente con el usado en la ingesta de datos (n8n).
+    # Debe coincidir exactamente con el usado en la ingesta de datos hecha para otro proyecto paralelo.
     embeddings = OpenAIEmbeddings(
         model="qwen/qwen3-embedding-8b",
         openai_api_key=api_key,
@@ -347,7 +347,7 @@ with st.form("main_form"):
     
     # Campos comunes para cualquier tipo de publicación
     with col1:
-        visual_context = st.text_area("Contexto Visual (¿Qué se ve?)", placeholder="Ej: Foto de Kyke saltando, primer plano guitarra...")
+        visual_context = st.text_area("Contexto Visual (¿Qué se ve?)", placeholder="Ej: Foto de Guille haciendo splash, primer plano guitarra...")
     with col2:
         user_instructions = st.text_area("Instrucciones Extra", placeholder="Ej: Haz énfasis en que es gratis, o menciona a tal persona...")
 
@@ -398,7 +398,7 @@ with st.form("main_form"):
 
     elif reason == "7. Merchandising / Tienda":
         c1, c2 = st.columns(2)
-        product = c1.text_input("Producto", placeholder="Camiseta, Vinilo...")
+        product = c1.text_input("Producto", placeholder="Camiseta, CD...")
         price = c2.text_input("Precio / Oferta (Opcional)")
         link_shop = st.text_input("Link Tienda")
         specific_data = {"product": product, "price": price, "link": link_shop}
