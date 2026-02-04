@@ -9,7 +9,7 @@ Herramienta interna de IA desarrollada para la banda de rock **Arrojo**. Este ag
 
 Utiliza **RAG (Retrieval-Augmented Generation)** para consultar una base de conocimiento vectorial y datos en tiempo real (agenda de conciertos), garantizando que la información generada sea verídica y actualizada.
 
-![Interfaz de Usuario](AQUI_LA_URL_DE_TU_IMAGEN_DEL_DASHBOARD)
+![Interfaz de Usuario](preview.png)
 *(Interfaz construida con Streamlit simulando la estética corporativa de la banda)*
 
 ## 🚀 Funcionalidades Clave
