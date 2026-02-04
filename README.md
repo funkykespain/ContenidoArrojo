@@ -1,6 +1,6 @@
 # Arrojo Content Generator (AI Agent)
 
-[![Python](https://img.shields.io/badge/Python-3.9%2B-blue)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.11%2B-blue)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/Frontend-Streamlit-red)](https://streamlit.io/)
 [![LangChain](https://img.shields.io/badge/Orchestrator-LangChain-green)](https://www.langchain.com/)
 [![Docker](https://img.shields.io/badge/Deploy-Docker-2496ED)](https://www.docker.com/)
@@ -50,11 +50,11 @@ Si quieres clonar y probar este proyecto (necesitarás tus propias API Keys):
     Crea un archivo `.env` en la raíz y añade:
     ```ini
     OPENROUTER_API_KEY="sk-..."
-    OPENROUTER_BASE_URL="[https://openrouter.ai/api/v1](https://openrouter.ai/api/v1)"
-    QDRANT_URL="[https://tu-instancia-qdrant.com](https://tu-instancia-qdrant.com)"
+    OPENROUTER_BASE_URL="https://openrouter.ai/api/v1"
+    QDRANT_URL="https://tu-instancia-qdrant.com"
     QDRANT_API_KEY="tu-key"
     QDRANT_COLLECTION="nombre-coleccion"
-    AGENDA_CONCIERTOS="url-csv-publico"
+    AGENDA_CONCIERTOS="url-csv-publico" # Creado en Google Sheet
     ```
 
 4.  **Ejecutar:**
