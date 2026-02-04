@@ -1,6 +1,6 @@
 # Arrojo Content Generator (AI Agent)
 
-[![Python](https://img.shields.io/badge/Python-3.9%2B-blue)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.11%2B-blue)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/Frontend-Streamlit-red)](https://streamlit.io/)
 [![LangChain](https://img.shields.io/badge/Orchestrator-LangChain-green)](https://www.langchain.com/)
 [![Docker](https://img.shields.io/badge/Deploy-Docker-2496ED)](https://www.docker.com/)
