@@ -27,7 +27,7 @@ Utiliza **RAG (Retrieval-Augmented Generation)** para consultar una base de cono
 * **LLM:** Meta Llama 3.3 70B (vía OpenRouter) para razonamiento complejo en español.
 * **Vector Store:** Qdrant (Base de datos vectorial).
 * **Embeddings:** Qwen3-8B.
-* **Despliegue:** Docker + Easypanel en VPS.
+* **Despliegue:** Docker en VPS.
 
 ## ⚙️ Configuración Local
 
