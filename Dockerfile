@@ -1,5 +1,5 @@
 # Usamos una imagen ligera de Python
-FROM python:3.10-slim
+FROM python:3.11-slim
 
 # Evita que Python genere archivos .pyc y fuerza salida en consola
 ENV PYTHONDONTWRITEBYTECODE=1
