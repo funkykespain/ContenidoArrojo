@@ -8,11 +8,11 @@ ENV PYTHONUNBUFFERED=1
 # Directorio de trabajo
 WORKDIR /app
 
-# Instalar dependencias del sistema si fueran necesarias
+# Instalar dependencias del sistema necesarias
+# HE ELIMINADO 'software-properties-common' QUE DABA ERROR
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
-    software-properties-common \
     && rm -rf /var/lib/apt/lists/*
 
 # Copiar requirements e instalar
