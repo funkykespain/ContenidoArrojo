@@ -9,7 +9,7 @@ Herramienta interna de IA desarrollada para la banda de rock **Arrojo**. Este ag
 
 Utiliza **RAG (Retrieval-Augmented Generation)** para consultar una base de conocimiento vectorial y datos en tiempo real (agenda de conciertos), garantizando que la información generada sea verídica y actualizada.
 
-![Interfaz de Usuario](AQUI_LA_URL_DE_TU_IMAGEN_DEL_DASHBOARD)
+![Interfaz de Usuario](preview.png)
 *(Interfaz construida con Streamlit simulando la estética corporativa de la banda)*
 
 ## 🚀 Funcionalidades Clave
@@ -27,7 +27,7 @@ Utiliza **RAG (Retrieval-Augmented Generation)** para consultar una base de cono
 * **LLM:** Meta Llama 3.3 70B (vía OpenRouter) para razonamiento complejo en español.
 * **Vector Store:** Qdrant (Base de datos vectorial).
 * **Embeddings:** Qwen3-8B.
-* **Despliegue:** Docker + Easypanel en VPS.
+* **Despliegue:** Docker en VPS.
 
 ## ⚙️ Configuración Local
 
@@ -35,7 +35,7 @@ Si quieres clonar y probar este proyecto (necesitarás tus propias API Keys):
 
 1.  **Clonar el repositorio:**
     ```bash
-    git clone [https://github.com/TU_USUARIO/ContenidoArrojo.git](https://github.com/TU_USUARIO/ContenidoArrojo.git)
+    git clone [https://github.com/funkykespain/ContenidoArrojo.git](https://github.com/funkykespain/ContenidoArrojo.git)
     cd ContenidoArrojo
     ```
 
