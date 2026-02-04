@@ -50,8 +50,8 @@ Si quieres clonar y probar este proyecto (necesitarás tus propias API Keys):
     Crea un archivo `.env` en la raíz y añade:
     ```ini
     OPENROUTER_API_KEY="sk-..."
-    OPENROUTER_BASE_URL="[https://openrouter.ai/api/v1](https://openrouter.ai/api/v1)"
-    QDRANT_URL="[https://tu-instancia-qdrant.com](https://tu-instancia-qdrant.com)"
+    OPENROUTER_BASE_URL="https://openrouter.ai/api/v1"
+    QDRANT_URL="https://tu-instancia-qdrant.com"
     QDRANT_API_KEY="tu-key"
     QDRANT_COLLECTION="nombre-coleccion"
     AGENDA_CONCIERTOS="url-csv-publico" # Creado en Google Sheet
