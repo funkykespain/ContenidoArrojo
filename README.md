@@ -35,7 +35,7 @@ Si quieres clonar y probar este proyecto (necesitarás tus propias API Keys):
 
 1.  **Clonar el repositorio:**
     ```bash
-    git clone [https://github.com/TU_USUARIO/ContenidoArrojo.git](https://github.com/TU_USUARIO/ContenidoArrojo.git)
+    git clone [https://github.com/funkykespain/ContenidoArrojo.git](https://github.com/funkykespain/ContenidoArrojo.git)
     cd ContenidoArrojo
     ```
 
