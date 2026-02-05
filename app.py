@@ -142,16 +142,25 @@ st.markdown("""
         border: 2px solid white !important;
     }
             
-    /* 8. FORZAR FOOTER AL FONDO DEL SIDEBAR */
-    /* Apuntamos directamente a la clase del bloque vertical */
-    section[data-testid="stSidebar"] .stVerticalBlock {
-        min-height: 90vh; /* Forzamos altura mínima */
+    /* 8. FOOTER RESPONSIVE */
+    
+    /* 1. Configuramos el contenedor del contenido del sidebar para usar Flexbox */
+    section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
+        height: 100vh; /* Usamos toda la altura de la ventana */
+        display: flex;
+        flex-direction: column;
+        padding-bottom: 2rem; /* Un poco de aire al final para que no toque el borde */
+    }
+
+    /* 2. El bloque interno (donde están los inputs) crece para ocupar el espacio */
+    section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] > div:first-child {
+        flex: 1; 
         display: flex;
         flex-direction: column;
     }
-    
-    /* El último elemento dentro de ese bloque (tu enlace) se va al fondo */
-    section[data-testid="stSidebar"] .stVerticalBlock > div:last-child {
+
+    /* 3. El último elemento de ese bloque (el footer) se empuja automáticamente al fondo */
+    section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] > div:first-child > div:last-child {
         margin-top: auto;
     }
 
