@@ -144,24 +144,29 @@ st.markdown("""
             
     /* 8. FOOTER RESPONSIVE */
     
-    /* 1. Configuramos el contenedor del contenido del sidebar para usar Flexbox */
+    /* NIVEL 1: El contenedor principal del scroll del sidebar debe medir toda la pantalla */
+    section[data-testid="stSidebar"] > div {
+        height: 100vh;
+    }
+
+    /* NIVEL 2: El contenedor del contenido de usuario hereda esa altura */
     section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
-        height: 100vh; /* Usamos toda la altura de la ventana */
-        display: flex;
-        flex-direction: column;
-        padding-bottom: 2rem; /* Un poco de aire al final para que no toque el borde */
-    }
-
-    /* 2. El bloque interno (donde están los inputs) crece para ocupar el espacio */
-    section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] > div:first-child {
-        flex: 1; 
+        height: 100%;
         display: flex;
         flex-direction: column;
     }
 
-    /* 3. El último elemento de ese bloque (el footer) se empuja automáticamente al fondo */
-    section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] > div:first-child > div:last-child {
+    /* NIVEL 3: El bloque vertical interno también hereda la altura */
+    section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* ACCIÓN: El último elemento (Footer) se empuja al fondo usando el espacio sobrante */
+    section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] > div:last-child {
         margin-top: auto;
+        padding-bottom: 2rem; /* Espacio extra para que no roce el borde inferior */
     }
 
 </style>
