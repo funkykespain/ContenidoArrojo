@@ -143,15 +143,15 @@ st.markdown("""
     }
             
     /* 8. FORZAR FOOTER AL FONDO DEL SIDEBAR */
-    /* 1. Apuntamos al bloque vertical interno que agrupa los widgets */
-    section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] > div:first-child {
-        min-height: 88vh; /* Forzamos a que la caja ocupe toda la altura disponible */
+    /* Apuntamos directamente a la clase del bloque vertical */
+    section[data-testid="stSidebar"] .stVerticalBlock {
+        min-height: 90vh; /* Forzamos altura mínima */
         display: flex;
         flex-direction: column;
     }
     
-    /* 2. Seleccionamos el último widget (tu footer) y lo empujamos abajo */
-    section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] > div:first-child > div:last-child {
+    /* El último elemento dentro de ese bloque (tu enlace) se va al fondo */
+    section[data-testid="stSidebar"] .stVerticalBlock > div:last-child {
         margin-top: auto;
     }
 
