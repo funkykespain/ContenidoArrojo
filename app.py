@@ -143,13 +143,15 @@ st.markdown("""
     }
             
     /* 8. FORZAR FOOTER AL FONDO DEL SIDEBAR */
-    section[data-testid="stSidebar"] > div:first-child {
-        height: 100vh;
+    /* Apuntamos al contenedor interno de los widgets */
+    section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
         display: flex;
         flex-direction: column;
+        min-height: 85vh; /* Forzamos a que ocupe altura para tener espacio que rellenar */
     }
     
-    section[data-testid="stSidebar"] > div:first-child > div:last-child {
+    /* Empujamos SOLO el último elemento (el enlace) hacia abajo */
+    section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] > div:last-of-type {
         margin-top: auto;
     }
 
