@@ -142,31 +142,24 @@ st.markdown("""
         border: 2px solid white !important;
     }
             
-    /* 8. FOOTER RESPONSIVE */
+    /* 8. FOOTER FIJADO AL FONDO */
     
-    /* NIVEL 1: El contenedor principal del scroll del sidebar debe medir toda la pantalla */
-    section[data-testid="stSidebar"] > div {
-        height: 100vh;
-    }
-
-    /* NIVEL 2: El contenedor del contenido de usuario hereda esa altura */
+    /* 1. Configuramos el contenedor del sidebar para que ocupe toda la altura */
     section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
-        height: 100%;
-        display: flex;
-        flex-direction: column;
+        min-height: 100vh;
+        position: relative; /* Referencia para el footer */
+        padding-bottom: 80px; /* Dejamos hueco abajo para que el footer no tape contenido si hay scroll */
     }
 
-    /* NIVEL 3: El bloque vertical interno también hereda la altura */
-    section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-    }
-
-    /* ACCIÓN: El último elemento (Footer) se empuja al fondo usando el espacio sobrante */
-    section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] > div:last-child {
-        margin-top: auto;
-        padding-bottom: 2rem; /* Espacio extra para que no roce el borde inferior */
+    /* 2. Posicionamos el footer de forma absoluta al final del contenedor */
+    .sidebar-footer {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        padding: 20px;
+        background-color: #000000; /* Fondo negro para integrar con el sidebar */
+        z-index: 10;
     }
 
 </style>
@@ -323,10 +316,10 @@ with st.sidebar:
     media_type = st.selectbox("Formato Multimedia", ["Vídeo", "Foto", "Carrusel", "Solo Texto"])
     tone = st.select_slider("Tono del Mensaje", options=["Serio/Informativo", "Normal", "Canalla (Default)", "Urgente/Hype", "Emotivo"], value="Canalla (Default)")
 
-    # Enlace discreto a documentación técnica (AGRUPADO PARA EL FOOTER)
+    # Enlace discreto a documentación técnica (CLASE ESPECÍFICA PARA POSICIONAMIENTO ABSOLUTO)
     st.markdown(
         """
-        <div style="margin-top: auto;">
+        <div class="sidebar-footer">
             <hr style="margin-bottom: 15px; border-color: #333;">
             <div style="text-align: center;">
                 <a href="https://github.com/funkykespain/ContenidoArrojo" target="_blank" 
