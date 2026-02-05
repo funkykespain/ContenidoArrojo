@@ -74,6 +74,28 @@ st.markdown("""
         letter-spacing: 0.05em;
     }
 
+    /* --- AJUSTE RESPONSIVE TÍTULO Y LOGO --- */
+    
+    /* 1. Texto Fluido: Se adapta automáticamente al ancho de pantalla */
+    h1 {
+        /* Mínimo: 1.4rem (Móvil), Ideal: 4% del ancho, Máximo: 2.5rem (PC) */
+        font-size: clamp(1.4rem, 4vw, 2.5rem) !important;
+        line-height: 1.2 !important; /* Para que no se separen mucho las líneas si salta */
+    }
+
+    /* 2. Ajuste específico para pantallas pequeñas (Móviles verticales) */
+    @media (max-width: 480px) {
+        /* Forzamos el logo a ser más pequeño para que no compita con el texto */
+        img[alt="Logo Arrojo"] {
+            width: 40px !important;
+            height: 40px !important;
+        }
+        /* Reducimos el espacio entre logo y texto */
+        div[style*="display: flex"] {
+            gap: 10px !important;
+        }
+    }
+
     /* 4. BARRA LATERAL (Aside en Stitch) */
     section[data-testid="stSidebar"] {
         background-color: #000000 !important;
@@ -306,10 +328,10 @@ def get_chain():
 
 # --- 4. FRONTEND: INTERFAZ DE USUARIO (STREAMLIT) ---
 
-# Cabecera con Logo y Título
+# Cabecera con Logo y Título (RESPONSIVE)
 st.markdown(f"""
-    <div style="display: flex; align-items: center; gap: 15px;">
-        <img src="{LOGO_URL_LARGE}" alt="Logo Arrojo" style="width: 60px; height: 60px; border-radius: 10px;">
+    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+        <img src="{LOGO_URL_LARGE}" alt="Logo Arrojo" style="width: 60px; height: 60px; border-radius: 10px; object-fit: cover;">
         <h1 style="margin: 0; padding: 0;">Arrojo Content Generator</h1>
     </div>
     """, unsafe_allow_html=True)
