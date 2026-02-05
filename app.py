@@ -74,28 +74,22 @@ st.markdown("""
         font-weight: 900 !important;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        line-height: 1.2 !important; /* Evita que las líneas se separen mucho */
+        line-height: 1.2 !important;
     }
 
-    /* ESCALADO FLUIDO (Clamp) */
-    /* La magia: Mínimo (Móvil) -> Ideal (Ventana) -> Máximo (PC) */
-    
-    /* Título Principal */
-    h1 { 
-        font-size: clamp(1.5rem, 5vw, 2.5rem) !important; 
-    }
-    
-    /* Cabeceras de Sección (Ej: Configuración) */
-    h2 { 
-        font-size: clamp(1.3rem, 4vw, 2rem) !important; 
-    } 
-    
-    /* Subtítulos (Ej: Detalles del Contenido, Datos Específicos) */
-    h3 { 
-        font-size: clamp(1.1rem, 3.5vw, 1.6rem) !important; 
+    /* ESCALADO FLUIDO (Clamp) para el cuerpo principal */
+    h1 { font-size: clamp(1.5rem, 5vw, 2.5rem) !important; }
+    h2 { font-size: clamp(1.3rem, 4vw, 2rem) !important; } 
+    h3 { font-size: clamp(1.1rem, 3.5vw, 1.6rem) !important; }
+
+    /* --- CORRECCIÓN ESPECÍFICA SIDEBAR --- */
+    /* Evita que "Configuración" se rompa en PC porque el sidebar es estrecho */
+    section[data-testid="stSidebar"] h2 {
+        font-size: 1.3rem !important; /* Tamaño más pequeño y seguro */
+        white-space: nowrap; /* Obliga a mantenerse en una línea */
     }
 
-    /* AJUSTE LOGO MÓVIL (Mismo que antes) */
+    /* AJUSTE LOGO MÓVIL */
     @media (max-width: 480px) {
         img[alt="Logo Arrojo"] {
             width: 40px !important;
