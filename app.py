@@ -66,31 +66,41 @@ st.markdown("""
         font-family: 'Roboto', sans-serif;
     }
 
-    /* Títulos con el estilo Montserrat Black de Stitch */
+    /* --- TIPOGRAFÍA Y JERARQUÍA RESPONSIVE --- */
+    
+    /* Estilo base para todos los títulos */
     h1, h2, h3 {
         font-family: 'Montserrat', sans-serif !important;
         font-weight: 900 !important;
         text-transform: uppercase;
         letter-spacing: 0.05em;
+        line-height: 1.2 !important; /* Evita que las líneas se separen mucho */
     }
 
-    /* --- AJUSTE RESPONSIVE TÍTULO Y LOGO --- */
+    /* ESCALADO FLUIDO (Clamp) */
+    /* La magia: Mínimo (Móvil) -> Ideal (Ventana) -> Máximo (PC) */
     
-    /* 1. Texto Fluido: Se adapta automáticamente al ancho de pantalla */
-    h1 {
-        /* Mínimo: 1.4rem (Móvil), Ideal: 4% del ancho, Máximo: 2.5rem (PC) */
-        font-size: clamp(1.4rem, 4vw, 2.5rem) !important;
-        line-height: 1.2 !important; /* Para que no se separen mucho las líneas si salta */
+    /* Título Principal */
+    h1 { 
+        font-size: clamp(1.5rem, 5vw, 2.5rem) !important; 
+    }
+    
+    /* Cabeceras de Sección (Ej: Configuración) */
+    h2 { 
+        font-size: clamp(1.3rem, 4vw, 2rem) !important; 
+    } 
+    
+    /* Subtítulos (Ej: Detalles del Contenido, Datos Específicos) */
+    h3 { 
+        font-size: clamp(1.1rem, 3.5vw, 1.6rem) !important; 
     }
 
-    /* 2. Ajuste específico para pantallas pequeñas (Móviles verticales) */
+    /* AJUSTE LOGO MÓVIL (Mismo que antes) */
     @media (max-width: 480px) {
-        /* Forzamos el logo a ser más pequeño para que no compita con el texto */
         img[alt="Logo Arrojo"] {
             width: 40px !important;
             height: 40px !important;
         }
-        /* Reducimos el espacio entre logo y texto */
         div[style*="display: flex"] {
             gap: 10px !important;
         }
