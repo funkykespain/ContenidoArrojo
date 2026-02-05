@@ -43,117 +43,103 @@ st.set_page_config(
 
 # --- 2. ESTILOS VISUALES (CSS INYECTADO) ---
 # Adaptamos la interfaz de Streamlit para que coincida con el branding de ArrojoRock.es
-# - Tipografías: Montserrat y Roboto.
-# - Colores: Fondo negro (#0e0e0e) y acentos en rojo corporativo (#e74c3c).
 st.markdown("""
 <style>
-    /* IMPORTAR FUENTES OFICIALES */
-    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Roboto:wght@300;400&display=swap');
+    /* 1. IMPORTAR FUENTES Y ICONOS */
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&family=Roboto:wght@300;400;500&display=swap');
+    @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
 
-    /* VARIABLES DE TEMA */
+    /* 2. VARIABLES DE DISEÑO (Extraídas de Stitch) */
     :root {
-        --color-primary: #e74c3c;
-        --color-primary-dark: #c0392b;
-        --bg-dark: #0e0e0e;
-        --bg-card: #1a1a1a;
-        --text-headings: #ffffff;
-        --text-body: #cccccc;
+        --primary: #ed1c24;
+        --primary-hover: #c41219;
+        --bg-dark: #0a0a0a;
+        --surface-dark: #121212;
+        --border-dark: #2d2d2d;
+        --input-bg: #1a1a1a;
+        --text-muted: #9ca3af;
     }
 
-    /* ESTILOS GENERALES DE LA APP */
+    /* 3. ESTILO GLOBAL */
     .stApp {
         background-color: var(--bg-dark);
         font-family: 'Roboto', sans-serif;
     }
-    
-    p, label, .stMarkdown {
-        color: var(--text-body) !important;
-    }
 
+    /* Títulos con el estilo Montserrat Black de Stitch */
     h1, h2, h3 {
         font-family: 'Montserrat', sans-serif !important;
-        color: var(--text-headings) !important;
         font-weight: 900 !important;
         text-transform: uppercase;
-        letter-spacing: -1px;
+        letter-spacing: 0.05em;
     }
 
-    /* BARRA LATERAL */
+    /* 4. BARRA LATERAL (Aside en Stitch) */
     section[data-testid="stSidebar"] {
-        background-color: #000000;
-        border-right: 1px solid #333;
-    }
-    
-    section[data-testid="stSidebar"] h1, 
-    section[data-testid="stSidebar"] h2, 
-    section[data-testid="stSidebar"] h3 {
-        color: var(--color-primary) !important;
+        background-color: #000000 !important;
+        border-right: 1px solid var(--border-dark);
+        padding-top: 2rem;
     }
 
-    /* FORMULARIOS E INPUTS */
+    /* 5. INPUTS Y SELECTS (Estilo Tailwind Dark) */
     .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {
-        background-color: var(--bg-card) !important;
+        background-color: var(--input-bg) !important;
+        border: 1px solid var(--border-dark) !important;
+        border-radius: 6px !important;
         color: white !important;
-        border: 1px solid #333 !important;
-        border-radius: 10px !important;
+        transition: all 0.2s ease;
     }
-    
+
     .stTextInput input:focus, .stTextArea textarea:focus {
-        border-color: var(--color-primary) !important;
-        box-shadow: 0 0 5px rgba(231, 76, 60, 0.5) !important;
+        border-color: var(--primary) !important;
+        box-shadow: 0 0 0 1px var(--primary) !important;
     }
 
-    .stTextInput label, .stSelectbox label, .stTextArea label {
-        color: #999 !important;
-        font-size: 0.9rem !important;
-        font-weight: 600 !important;
-    }
-
-    /* BOTONES PERSONALIZADOS */
+    /* 6. BOTÓN GENERAR (El estilo "Fire" de Stitch) */
     div.stButton > button {
-        background: linear-gradient(45deg, var(--color-primary), var(--color-primary-dark)) !important;
-        color: white !important;
+        background-color: #000000 !important;
+        color: #eeeeee !important;
+        border: 1px solid #4b5563 !important;
+        border-radius: 6px !important;
+        padding: 0.75rem 1.5rem !important;
         font-family: 'Montserrat', sans-serif !important;
         font-weight: 700 !important;
-        border: none !important;
-        border-radius: 50px !important;
-        padding: 0.6rem 2rem !important;
         text-transform: uppercase;
-        letter-spacing: 1px;
         transition: all 0.3s ease !important;
         width: 100%;
+        margin-top: 1rem;
     }
 
     div.stButton > button:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 10px 20px rgba(231, 76, 60, 0.3);
-    }
-    
-    div.stButton > button:active {
-        transform: translateY(1px);
+        border-color: var(--primary) !important;
+        color: white !important;
+        box-shadow: 0 0 20px rgba(237, 28, 36, 0.3) !important;
+        transform: translateY(-2px);
     }
 
-    /* BLOQUES DE RESULTADOS */
-    .stCode {
-        background-color: #111 !important;
-        border: 1px solid #333;
-        border-radius: 10px;
+    /* 7. TARJETAS DE CONTENIDO (Secciones en Stitch) */
+    div[data-testid="stVerticalBlock"] > div.stVerticalBlock {
+        gap: 1.5rem;
     }
     
-    hr { border-color: #333 !important; }
-    
-    .stAlert {
-        background-color: var(--bg-card) !important;
-        color: white !important;
-        border: 1px solid #333;
+    /* Efecto de línea superior roja que vimos en Stitch */
+    header[data-testid="stHeader"] {
+        background-color: transparent;
     }
-    
-    /* SLIDERS */
+    .stApp::before {
+        content: "";
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--primary), transparent);
+        z-index: 999;
+        opacity: 0.6;
+    }
+
+    /* SLIDERS PERSONALIZADOS */
     div[data-baseweb="slider"] div[role="slider"] {
-        background-color: var(--color-primary) !important;
-    }
-    .stSlider div[data-baseweb="slider"] > div > div {
-        background-color: #333 !important;
+        background-color: var(--primary) !important;
+        border: 2px solid white !important;
     }
 
 </style>
