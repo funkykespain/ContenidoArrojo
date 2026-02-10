@@ -225,8 +225,8 @@ def get_chain():
     # Configuramos el cliente con soporte HTTPS y puerto seguro.
     client = QdrantClient(
         url=qdrant_url,
-        port=443,
-        https=True,
+        port=6333,
+        https=False,
         api_key=qdrant_key,
         timeout=20
     )
