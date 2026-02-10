@@ -228,7 +228,7 @@ def get_chain():
         port=6333,
         https=False,
         api_key=qdrant_key,
-        timeout=20
+        timeout=60
     )
     vectorstore = QdrantVectorStore(
         client=client,
