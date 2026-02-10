@@ -244,7 +244,9 @@ def get_chain():
         model="meta-llama/llama-3.3-70b-instruct",
         openai_api_key=api_key,
         openai_api_base=base_url,
-        temperature=0.7 # Temperatura media para balancear creatividad y precisión
+        temperature=0.7, # Temperatura media para balancear creatividad y precisión
+        timeout=120,    # Dale 2 minutos al modelo para pensar
+        max_retries=3 # Si falla por red, que lo intente solo 3 veces más
     )
 
     # D. Definición de la Estructura de Salida
