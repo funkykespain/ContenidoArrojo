@@ -26,6 +26,100 @@ def fetch_agenda_data():
     except Exception as e:
         return f"Error leyendo agenda: {str(e)}"
 
+# --- NUEVA LÓGICA DE OPTIMIZACIÓN DE PROMPTS ---
+def get_optimization_instruction(platform, media_type):
+    """
+    Devuelve la instrucción técnica específica basada en la combinación
+    de Plataforma y Tipo de Medio seleccionados.
+    """
+    
+    # Diccionario de reglas basado en documentación técnica 2026
+    # Clave compuesta: "PLATAFORMA|TIPO_MEDIO"
+    # Usamos '|' como separador para evitar conflictos.
+    
+    instructions = {
+        # CASO: Instagram (Feed) + Carrusel
+        "Instagram (Feed)|Carrusel": """
+        OPTIMIZACIÓN: Estructura de Carrusel Educativo.
+        * Objetivo: Maximizar 'Guardados' (Saves).
+        * Estructura: Genera texto para 8-10 diapositivas secuenciales.
+        * Slide 1: Gancho visual de alto contraste (<10 palabras).
+        * Cuerpo: Una idea por slide. Usa listas y síntesis.
+        * Slide Final: CTA explícito para GUARDAR el post.
+        * Caption: Estilo micro-blogging. Primera frase debe ser un gancho SEO.
+        """,
+
+        # CASO: Instagram (Stories) + Vídeo / Foto (Aplica a ambos)
+        "Instagram (Stories)|Vídeo": """
+        OPTIMIZACIÓN: Retención y Fidelización.
+        * Tono: Auténtico, 'crudo' y conversacional.
+        * Interacción: DEBES sugerir explícitamente qué Sticker usar (Encuesta, Caja de Preguntas, Tu Turno).
+        * Objetivo: Generar respuesta directa (DM) o toque en sticker.
+        * Duración/Texto: Breve, directo, sin hashtags.
+        """,
+        "Instagram (Stories)|Foto": """
+        OPTIMIZACIÓN: Retención y Fidelización.
+        * Tono: Auténtico, 'crudo' y conversacional.
+        * Interacción: DEBES sugerir explícitamente qué Sticker usar (Encuesta, Caja de Preguntas, Tu Turno).
+        * Objetivo: Generar respuesta directa (DM) o toque en sticker.
+        * Duración/Texto: Breve, directo, sin hashtags.
+        """,
+
+        # CASO: TikTok + Vídeo
+        "TikTok|Vídeo": """
+        OPTIMIZACIÓN: Motor de Búsqueda y Retención (SEO + Watch Time).
+        * Gancho: Escribe un gancho (visual/auditivo) para los primeros 2 segundos. Debe ser disruptivo.
+        * SEO: La descripción debe actuar como meta-data. Incluye palabras clave long-tail naturales en el texto.
+        * Texto en Pantalla: Sugiere keywords para poner sobre el vídeo (para el OCR de TikTok).
+        * Hashtags: Usa la regla 3-3-3 (3 amplios, 3 nicho, 3 específicos).
+        """,
+
+        # CASO: Facebook + Vídeo
+        "Facebook|Vídeo": """
+        OPTIMIZACIÓN: Discovery Engine.
+        * Formato: Tratamiento de Reel unificado.
+        * Narrativa: Estructura de historia completa (Inicio-Nudo-Desenlace) para retener +90 segundos.
+        * Tono: Más universal/emocional, menos jerga Gen Z.
+        * Hashtags: MÁXIMO 1 o ninguno. Facebook penaliza el exceso.
+        """,
+
+        # CASO: YouTube (Shorts) + Vídeo
+        "YouTube (Shorts)|Vídeo": """
+        OPTIMIZACIÓN: Tráfico y Suscripción.
+        * Loop: El guion debe terminar de forma que enlace con el principio (Loop perfecto).
+        * CTA: Enfocado a 'Suscribirse' o 'Ver vídeo relacionado'.
+        * SEO: Título de <60 caracteres cargado de intención de búsqueda.
+        """,
+
+        # CASO: YouTube (Video) + Vídeo
+        "YouTube (Video)|Vídeo": """
+        OPTIMIZACIÓN: SEO y Key Moments.
+        * Estructura: Divide el guion en 'Capítulos' claros con marcas de tiempo sugeridas.
+        * Descripción: Primeros 150 caracteres con la keyword principal.
+        * Título: Optimizado para CTR (Click Through Rate).
+        """,
+
+        # CASO: WhatsApp Channel + Solo Texto
+        "WhatsApp Channel|Solo Texto": """
+        OPTIMIZACIÓN: Boletín de Alta Fricción.
+        * Longitud: ESTRICTAMENTE menos de 500 caracteres.
+        * Formato: Usa negritas (*texto*) para titulares.
+        * Interacción: Pide reacción con Emojis específicos (ej: 'Pulsa 🔥').
+        * Prohibido: No usar hashtags. No pedir comentarios (es unidireccional).
+        """
+    }
+
+    # Construir clave de búsqueda
+    key = f"{platform}|{media_type}"
+
+    # Retornar instrucción específica o un fallback genérico si la combinación no tiene regla estricta
+    return instructions.get(key, f"""
+    OPTIMIZACIÓN: Estándar para {platform}.
+    * Formato: Adaptado a {media_type}.
+    * Objetivo: Maximizar engagement según las mejores prácticas generales de la plataforma.
+    * CTA: Claro y directo.
+    """)
+
 # --- 1. CONFIGURACIÓN INICIAL DEL PROYECTO ---
 load_dotenv()
 
@@ -206,17 +300,32 @@ def get_chain():
     Configura y devuelve la cadena de procesamiento (Chain).
     Se usa @st.cache_resource para mantener la conexión abierta y no reconectar en cada interacción.
     """
-    # Credenciales y Configuración
+    # --- Credenciales y Configuración ---
+    
+    # Básicas
     api_key = os.getenv("OPENROUTER_API_KEY")
     base_url = os.getenv("OPENROUTER_BASE_URL")
+    
+    # Qdrant: Conversión de tipos para evitar errores de conexión
     qdrant_url = os.getenv("QDRANT_URL")
     qdrant_key = os.getenv("QDRANT_API_KEY")
     collection_name = os.getenv("QDRANT_COLLECTION")
+    qdrant_https = os.getenv("QDRANT_HTTPS", "False").lower() == "true"
+    qdrant_timeout = int(os.getenv("QDRANT_TIMEOUT", 60))
+
+    # Modelos: Definición de nombres y parámetros técnicos
+    embedding_model_name = os.getenv("EMBEDDING_MODEL", "qwen/qwen3-embedding-8b")
+    llm_model_name = os.getenv("LLM_MODEL", "mistralai/mistral-small-creative")
+    
+    # Parámetros del LLM: Conversión a numéricos
+    llm_temp = float(os.getenv("LLM_TEMPERATURE", 0.7))
+    llm_timeout = int(os.getenv("LLM_TIMEOUT", 120))
+    llm_retries = int(os.getenv("LLM_MAX_RETRIES", 3))
 
     # A. Modelo de Embeddings
     # Debe coincidir exactamente con el usado en la ingesta de datos hecha para otro proyecto paralelo.
     embeddings = OpenAIEmbeddings(
-        model="qwen/qwen3-embedding-8b",
+        model=embedding_model_name,
         openai_api_key=api_key,
         openai_api_base=base_url
     )
@@ -226,9 +335,9 @@ def get_chain():
     client = QdrantClient(
         url=qdrant_url,
         port=6333,
-        https=False,
+        https=qdrant_https,
         api_key=qdrant_key,
-        timeout=60
+        timeout=qdrant_timeout
     )
     vectorstore = QdrantVectorStore(
         client=client,
@@ -239,14 +348,15 @@ def get_chain():
     retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
 
     # C. Modelo de Lenguaje (LLM)
-    # Usamos Llama 3.3 70B por su capacidad de razonamiento y coste eficiente.
     llm = ChatOpenAI(
-        model="meta-llama/llama-3.3-70b-instruct",
+        model=llm_model_name,
         openai_api_key=api_key,
         openai_api_base=base_url,
-        temperature=0.7, # Temperatura media para balancear creatividad y precisión
-        timeout=120,    # Dale 2 minutos al modelo para pensar
-        max_retries=3 # Si falla por red, que lo intente solo 3 veces más
+        temperature=llm_temp,
+        timeout=llm_timeout,
+        max_retries=llm_retries,
+        # Fuerza a la API a esperar un objeto JSON
+        model_kwargs={"response_format": {"type": "json_object"}} 
     )
 
     # D. Definición de la Estructura de Salida
@@ -257,58 +367,60 @@ def get_chain():
         hashtags: str = Field(description="Lista de hashtags optimizados separada por espacios")
         visual_suggestion: str = Field(description="Sugerencia breve para la imagen/video si no se provee")
 
-    structured_llm = llm.with_structured_output(SocialPost)
-
-    # E. Prompt del Sistema (Personalidad "Arrojer")
+    # Se añade method="json_mode", según la documentación
+    structured_llm = llm.with_structured_output(SocialPost, method="json_mode")
+   
+    # E. Prompt del Sistema
     # Define la voz, el tono y las reglas de negocio del agente.
-    # E. Prompt del Sistema (OPTIMIZADO V2)
     system_prompt = """
-    # Contexto temporal
-    HOY: {current_date}. Usa esta fecha para tiempos relativos ("mañana", "este viernes") y para saber si conciertos son pasados o futuros.
-
-    # Identidad
-    Eres el Community Manager de la banda de rock "Arrojo". Voz: "Estilo Arrojer": canalla, pasional y CERCANA. Hablas como un colega en la barra de un bar, no como un altavoz de noticias.
-
-    # Reglas CRÍTICAS (OBLIGATORIAS)
-    1) Regla del TÚ: Prohibido plural ("os esperamos", "preparaos", "arrojers"). Siempre 2ª persona singular ("te esperamos", "prepárate"). Le hablas a una sola persona.
-    2) "Arrojers": Prohibido en título o frase inicial. Máx 1 vez por post, mejor en cierre o cuerpo, nunca destacándolo.
-    3) Emojis: Máx 2-3 en todo el texto. No de relleno; solo para énfasis emocional real.
-    4) Cero clichés IA: Prohibidas frases tipo "Noche inolvidable", "Lo vamos a romper", "Prepárense". Sé específico, real y rock castizo/cañero.
-
-    # Estrategia y CTAs
-    Si es CONCIERTO (reason=1):
-    - CTA obligatorio: link de entradas.
-    - CTA creativo: invitar a escuchar los temas antes (Spotify) para ir con las letras aprendidas.
-
-    # Contexto RAG (datos reales)
-    {context}
-
-    # Agenda de conciertos (CSV oficial)
-    Usa esta tabla para validar fechas, detectar ciudades repetidas o recordar hitos:
-    {agenda_context}
-
-    # Solicitud
-    Post para {platform} en formato {media_type}.
-    MOTIVO: {reason}
-    DETALLES: {specific_data}
-    VISUAL: {visual_context}
-    EXTRA: {user_instructions}
-    TONO: {tone_modifier}
-
-    # Links fallback
-    Entradas/Web/Info oficial: https://arrojorock.es
+    ### CONTEXTO
+    FECHA HOY: {current_date} (Usar para tiempos relativos: mañana, viernes, etc) y para saber si conciertos son pasados o futuros.
+    
+    ### ROL
+    CM banda rock "Arrojo". TONO: {tone_modifier} + "Estilo Arrojer" (canalla, pasional, colega de bar, cercano, CERO corporativo).
+    
+    ### REGLAS DE ORO (NO ROMPER)
+    1. REGLA DEL TÚ: SIEMPRE 2ª persona singular ("te espera"). PROHIBIDO plural ("os esperamos", "preparaos").
+    2. PALABRA "ARROJERS": Máx 1 vez. NUNCA en inicio/título.
+    3. EMOJIS: Máx 2-3. Solo para énfasis real.
+    4. ANTI-CLICHÉ: PROHIBIDO "Noche inolvidable", "Lo vamos a romper", "Velada mágica". Sé crudo, específico y real, como el rock castizo/cañero.
+    
+    ### ESTRATEGIA
+    Si MOTIVO="1. Concierto":
+    - CTA OBLIGATORIO: Link entradas o de localización de la sala.
+    - CTA CREATIVO: Sugerir escuchar temas en Spotify antes...
+    
+    ### OPTIMIZACIÓN PLATAFORMA ({platform} - {media_type})
+    {optimization_instruction}
+    
+    ### FUENTES DE DATOS
+    [INFO RAG]: {context}
+    [AGENDA]: {agenda_context}
+    
+    ### LINKS DEFAULT (Usar si no hay específicos)
+    Web/Entradas/Info oficial: https://arrojorock.es
     Spotify: https://open.spotify.com/artist/4s0uEp9gcIcvU1ZEsDKQXv
     YouTube: https://www.youtube.com/channel/UCJnAZC6v6OfKxNydcD6CFqQ
-
-    Devuelve el objeto JSON final.
+    
+    ### TAREA
+    Genera el JSON final para:
+    - MOTIVO: {reason}
+    - INPUT DATOS: {specific_data}
+    - VISUAL: {visual_context}
+    - EXTRA: {user_instructions}
     """
 
     prompt = ChatPromptTemplate.from_template(system_prompt)
 
     # F. Construcción de la Cadena (Chain)
     # Generamos un string de búsqueda optimizado para RAG concatenando los inputs clave.
+    # Extraemos solo los valores del diccionario, ignorando las claves y símbolos.
     rag_query_generator = (
-        lambda x: f"{x['reason']} {x['specific_data']} {x['user_instructions']}"
+        lambda x: (
+            f"{x['reason']} "
+            f"{' '.join([str(v) for v in x['specific_data'].values() if v])} "
+            f"{x['user_instructions']}"
+        )
     )
 
     chain = (
@@ -320,6 +432,8 @@ def get_chain():
             "current_date": itemgetter("current_date"),
             "platform": itemgetter("platform"),
             "media_type": itemgetter("media_type"),
+            # Inyectamos la instrucción calculada dinámicamente
+            "optimization_instruction": itemgetter("optimization_instruction"),
             "reason": itemgetter("reason"),
             "specific_data": itemgetter("specific_data"),
             "visual_context": itemgetter("visual_context"),
@@ -469,29 +583,33 @@ if submitted:
                 # 1. Inicializar la cadena de LangChain
                 chain = get_chain()
                 
-                # 2. Descargar datos de agenda en tiempo real
+                # 2. Obtener datos auxiliares
+                # Descargar datos de agenda en tiempo real
                 agenda_text = fetch_agenda_data()
-                
-                # 3. Preparar datos para el prompt
+                # Preparar datos para el prompt
                 specific_data_str = str(specific_data)
-
-                # 4. Obtener fecha actual en formato legible
+                # Obtener fecha actual en formato legible
                 today_str = datetime.now().strftime("%d/%m/%Y")
                 
-                # 5. Invocar al Agente
+                # 3. Obtener instrucción de optimización
+                # Calculamos la regla técnica según lo que el usuario eligió
+                opt_instruction = get_optimization_instruction(platform, media_type)
+
+                # 4. Invocar al Agente con todos los datos necesarios
                 response = chain.invoke({
                     "platform": platform,
                     "media_type": media_type,
                     "reason": reason,
-                    "specific_data": specific_data_str,
+                    "specific_data": specific_data,
                     "visual_context": visual_context,
                     "user_instructions": user_instructions,
                     "tone_modifier": tone,
                     "agenda_context": agenda_text,
-                    "current_date": today_str
+                    "current_date": today_str,
+                    "optimization_instruction": opt_instruction
                 })
                 
-                # 6. Renderizar Resultados (Estilo Tarjeta)
+                # 5. Renderizar Resultados (Estilo Tarjeta)
                 st.success("¡Copy Generado con éxito! 🤘")
                 
                 st.markdown("### 📋 Copy Final")
