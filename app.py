@@ -408,6 +408,18 @@ def get_chain():
     - INPUT DATOS: {specific_data}
     - VISUAL: {visual_context}
     - EXTRA: {user_instructions}
+
+    ### FORMATO DE SALIDA (ESTRICTO)
+    Devuelve SOLAMENTE un objeto JSON plano (raw json).
+    - PROHIBIDO usar bloques de código markdown (```json).
+    - PROHIBIDO inventar claves nuevas.
+    - Debes rellenar EXACTAMENTE estas 4 claves:
+    {{
+        "platform": "{platform}",
+        "copy_text": "Aquí el texto completo del post (caption) con saltos de línea y emojis.",
+        "hashtags": "Lista de hashtags (#Uno #Dos)",
+        "visual_suggestion": "Descripción breve para el vídeo/foto."
+    }}
     """
 
     prompt = ChatPromptTemplate.from_template(system_prompt)
