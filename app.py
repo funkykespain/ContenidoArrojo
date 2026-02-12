@@ -8,6 +8,7 @@ from operator import itemgetter
 from langchain_qdrant import QdrantVectorStore
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
 from qdrant_client import QdrantClient
 
@@ -90,6 +91,7 @@ def get_optimization_instruction(platform, media_type):
         OPTIMIZACIÓN: Estructura de Carrusel Educativo.
         * Formato técnico: PROHIBIDO usar Markdown (**negrita**). Usa MAYÚSCULAS para resaltar.
         * Enlaces: NO pongas URLs. Escribe "Link en Bio" o "Comenta FUEGO".
+        * Campo 'hashtags': Usa 5-10 hashtags clásicos (#Rock #Musica).
         * Objetivo: Maximizar 'Guardados' (Saves).
         * Estructura: Genera texto para 8-10 diapositivas secuenciales.
         * Slide 1: Gancho visual de alto contraste (<10 palabras).
@@ -103,7 +105,8 @@ def get_optimization_instruction(platform, media_type):
         OPTIMIZACIÓN: Retención y Fidelización.
         * Tono: Auténtico, 'crudo' y conversacional.
         * Interacción: DEBES sugerir explícitamente qué Sticker usar (Encuesta, Caja de Preguntas, Tu Turno).
-        * Duración/Texto: Breve, directo, sin hashtags.
+        * Duración/Texto: Breve, directo.
+        * Campo 'hashtags': DEBE ESTAR VACÍO (cadena vacía ""). No uses hashtags en stories.
         * Formato: Texto plano.
         * Enlaces: NO escribas la URL. Indica "Usa el Sticker de Enlace".
         * Objetivo: Generar respuesta directa (DM) o toque en sticker.
@@ -112,7 +115,8 @@ def get_optimization_instruction(platform, media_type):
         OPTIMIZACIÓN: Retención y Fidelización.
         * Tono: Auténtico, 'crudo' y conversacional.
         * Interacción: DEBES sugerir explícitamente qué Sticker usar (Encuesta, Caja de Preguntas, Tu Turno).
-        * Duración/Texto: Breve, directo, sin hashtags.
+        * Duración/Texto: Breve, directo.
+        * Campo 'hashtags': DEBE ESTAR VACÍO (cadena vacía ""). No uses hashtags en stories.
         * Formato: Texto plano.
         * Enlaces: NO escribas la URL. Indica "Usa el Sticker de Enlace".
         * Objetivo: Generar respuesta directa (DM) o toque en sticker.
@@ -124,6 +128,7 @@ def get_optimization_instruction(platform, media_type):
         * Formato: Texto plano estricto (Sin negritas). Usa Emojis y SALTOS DE LÍNEA.
         * Enlaces: PROHIBIDO poner URLs en el texto. Usa "Link en la Bio".
         * CTA: Pide que visiten el perfil.
+        * Campo 'hashtags': Usa hashtags mixtos (Nicho + Amplios) con #.
         """,
 
         # CASO: TikTok + Vídeo
@@ -131,7 +136,7 @@ def get_optimization_instruction(platform, media_type):
         OPTIMIZACIÓN: Motor de Búsqueda y Retención (SEO + Watch Time).
         * Gancho: Escribe un gancho (visual/auditivo) para los primeros 2 segundos. Debe ser disruptivo.
         * Texto en Pantalla: Sugiere keywords para poner sobre el vídeo (para el OCR de TikTok).
-        * Hashtags: Usa la regla 3-3-3 (3 amplios, 3 nicho, 3 específicos).
+        * Campo 'hashtags': Usa la regla 3-3-3 (3 amplios, 3 nicho, 3 específicos o #Nicho #Viral #Marca).
         * Formato: Texto plano estricto.
         * Enlaces: NO pongas URLs. "Link en perfil".
         * SEO: La descripción debe actuar como meta-data. Incluye palabras clave long-tail naturales en el texto.
@@ -144,7 +149,7 @@ def get_optimization_instruction(platform, media_type):
         * Narrativa: Estructura de historia completa (Inicio-Nudo-Desenlace) para retener +90 segundos.
         * Tono: Más universal/emocional, menos jerga Gen Z.
         * Enlaces: SÍ puedes poner URLs completas al final del post (son clicables).
-        * Hashtags: Máximo 1 o ninguno. Facebook penaliza el exceso.
+        * Campo 'hashtags': Máximo 1 (#ArrojoRock) o ninguno. Facebook penaliza el exceso.
         """,
 
         # CASO: YouTube Shorts + Vídeo
@@ -155,6 +160,7 @@ def get_optimization_instruction(platform, media_type):
         * SEO: Título de <60 caracteres cargado de intención de búsqueda.
         * Formato: Texto plano.
         * Enlaces: NO en el título. Ponlos en comentario fijado o descripción.
+        * Campo 'hashtags': Palabras clave (Tags) separadas por COMAS sin almohadilla (concierto, rock, musica en vivo, rock español, banda emergente, madrid). NO uses #.
         """,
 
         # CASO: YouTube (Video) + Vídeo
@@ -165,6 +171,7 @@ def get_optimization_instruction(platform, media_type):
         * Título: Optimizado para CTR (Click Through Rate).
         * Formato: Texto plano.
         * Enlaces: NO en el título. Ponlos en comentario fijado o descripción.
+        * Campo 'hashtags': Palabras clave (Tags) separadas por COMAS sin almohadilla (concierto, rock, musica en vivo, rock español, banda emergente, madrid). NO uses #.
         """,
 
         # CASO: WhatsApp Channel + Solo Texto
@@ -175,6 +182,7 @@ def get_optimization_instruction(platform, media_type):
         * Prohibido: No usar hashtags. No pedir comentarios (es unidireccional).
         * Formato: USA Markdown de WhatsApp (*negrita* para títulos, _cursiva_).
         * Enlaces: URLs completas y clicables.
+        * Campo 'hashtags': DEBE ESTAR VACÍO (cadena vacía ""). WhatsApp no usa etiquetas.
         """
     }
 
@@ -188,6 +196,7 @@ def get_optimization_instruction(platform, media_type):
     * ENLACES: Si es Instagram/TikTok -> "Link en Bio". Si es Facebook/YT -> URL completa al final.
     * Objetivo: Maximizar engagement según las mejores prácticas generales de la plataforma.
     * CTA: Claro y directo.
+    * Campo 'hashtags': Si es YouTube -> Keywords separadas por comas. Si es WhatsApp/Stories -> Dejar vacío. Resto -> Hashtags con #.
     """)
 
 # --- 1. CONFIGURACIÓN INICIAL DEL PROYECTO ---
@@ -434,12 +443,14 @@ def get_chain():
     class SocialPost(BaseModel):
         platform: str = Field(description="Plataforma seleccionada")
         copy_text: str = Field(description="El texto del post listo para copiar, con emojis y estructura")
-        hashtags: str = Field(description="Lista de hashtags optimizados separada por espacios")
+        hashtags: str = Field(description="Etiquetas, Keywords (separadas por comas) o Hashtags (con #), según corresponda a la plataforma.")
         visual_suggestion: str = Field(description="Sugerencia breve para la imagen/video si no se provee")
 
-    # Se añade method="json_mode", según la documentación
-    structured_llm = llm.with_structured_output(SocialPost, method="json_mode")
-   
+    # Usamos JsonOutputParser en lugar de structured_llm
+    # structured_llm = llm.with_structured_output(SocialPost, method="json_mode")
+    # Este parser elimina automáticamente los ```json ``` si el modelo los pone.
+    parser = JsonOutputParser(pydantic_object=SocialPost)
+
     # E. Prompt del Sistema
     # Define la voz, el tono y las reglas de negocio del agente.
     system_prompt = """
@@ -479,20 +490,18 @@ def get_chain():
     - VISUAL: {visual_context}
     - EXTRA: {user_instructions}
 
-    ### FORMATO DE SALIDA (ESTRICTO)
-    Devuelve SOLAMENTE un objeto JSON plano (raw json).
-    - PROHIBIDO usar bloques de código markdown (```json).
-    - PROHIBIDO inventar claves nuevas.
-    - Debes rellenar EXACTAMENTE estas 4 claves:
-    {{
-        "platform": "{platform}",
-        "copy_text": "Aquí el texto completo del post (caption) con saltos de línea y emojis.",
-        "hashtags": "Lista de hashtags (#Uno #Dos)",
-        "visual_suggestion": "Descripción breve para el vídeo/foto."
-    }}
+    ### FORMATO DE SALIDA
+    {format_instructions}
+    
+    Asegúrate de que el contenido del JSON cumpla estas reglas:
+    1. "copy_text": Debe tener el texto completo, con saltos de línea (\n) y emojis.
+    2. "hashtags": Una lista de etiquetas según se indique en la optimización de plataforma.
+    3. "visual_suggestion": Descripción breve.
+    4. "platform": La plataforma seleccionada.
     """
 
-    prompt = ChatPromptTemplate.from_template(system_prompt)
+    # Inyectamos format_instructions automáticamente para reforzar la estructura
+    prompt = ChatPromptTemplate.from_template(system_prompt, partial_variables={"format_instructions": parser.get_format_instructions()})
 
     # F. Construcción de la Cadena (Chain)
     # Generamos un string de búsqueda optimizado para RAG concatenando los inputs clave.
@@ -523,7 +532,9 @@ def get_chain():
             "tone_modifier": itemgetter("tone_modifier")
         }
         | prompt
-        | structured_llm
+        | llm       # Usamos el LLM base
+        | parser    # El parser limpia el markdown y devuelve un Diccionario
+        | (lambda x: SocialPost(**x)) # Convertimos el Diccionario a Objeto Pydantic para no romper tu UI
     )
     
     return chain
