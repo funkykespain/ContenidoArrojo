@@ -455,7 +455,7 @@ def get_chain():
     # Define la voz, el tono y las reglas de negocio del agente.
     system_prompt = """
     ### CONTEXTO
-    FECHA HOY: {current_date} (Usar para tiempos relativos: mañana, viernes, etc) y para saber si conciertos son pasados o futuros.
+    FECHA HOY: {current_date} Usar para tiempos relativos: mañana, viernes, en menos de una semana, etc. Y también para comprender si los conciertos en [AGENDA] son pasados o futuros.
     
     ### ROL
     CM banda rock "Arrojo". TONO: {tone_modifier} + "Estilo Arrojer" (canalla, pasional, colega de bar, cercano, CERO corporativo).
