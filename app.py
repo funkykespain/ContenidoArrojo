@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+import re
 from datetime import datetime
 from dotenv import load_dotenv
 import requests
@@ -26,7 +27,53 @@ def fetch_agenda_data():
     except Exception as e:
         return f"Error leyendo agenda: {str(e)}"
 
-# --- NUEVA LÓGICA DE OPTIMIZACIÓN DE PROMPTS ---
+# --- FUNCIÓN DE LIMPIEZA DE FORMATO (FILTRO DE SEGURIDAD) ---
+def clean_format_for_platform(text, platform):
+    """
+    Elimina Markdown y gestiona enlaces según las restricciones técnicas de la red social.
+    Esto actúa como una barrera de seguridad por si el LLM ignora las instrucciones.
+    """
+    # 1. Definir si la plataforma soporta Markdown (Solo WhatsApp lo soporta bien)
+    supports_markdown = "WhatsApp" in platform
+    
+    # 2. Definir si la plataforma soporta enlaces clicables en el cuerpo del texto
+    clickable_links = any(p in platform for p in ["Facebook", "WhatsApp", "YouTube", "Twitter", "X"])
+
+    clean_text = text
+
+    # --- LIMPIEZA DE ESTILOS (Negrita, Cursiva) ---
+    if not supports_markdown:
+        # Eliminar negritas (**texto** o __texto__) -> texto
+        clean_text = re.sub(r'\*\*(.*?)\*\*', r'\1', clean_text)
+        clean_text = re.sub(r'__(.*?)__', r'\1', clean_text)
+        # Eliminar cursivas (*texto* o _texto_) -> texto
+        clean_text = re.sub(r'\*(.*?)\*', r'\1', clean_text)
+        clean_text = re.sub(r'_(.*?)_', r'\1', clean_text)
+        # Eliminar encabezados Markdown (# Titulo)
+        clean_text = re.sub(r'^#+\s+', '', clean_text, flags=re.MULTILINE)
+
+    # --- GESTIÓN INTELIGENTE DE ENLACES ---
+    # Patrón para encontrar enlaces markdown: [Texto Ancla](URL)
+    link_pattern = r'\[(.*?)\]\((.*?)\)'
+    
+    def link_replacer(match):
+        anchor_text = match.group(1)
+        url = match.group(2)
+        
+        if clickable_links:
+            # En Facebook/YouTube: Convertimos "[Entradas](url)" en "Entradas (url)"
+            # O si prefieres solo la URL: return f"{anchor_text}: {url}"
+            return f"{anchor_text} ({url})"
+        else:
+            # En Instagram/TikTok: La URL no sirve de nada. 
+            # Convertimos "[Entradas](url)" en "Entradas".
+            return anchor_text
+
+    clean_text = re.sub(link_pattern, link_replacer, clean_text)
+
+    return clean_text
+
+# --- LÓGICA DE OPTIMIZACIÓN (CON REGLAS DE FORMATO) ---
 def get_optimization_instruction(platform, media_type):
     """
     Devuelve la instrucción técnica específica basada en la combinación
@@ -36,11 +83,13 @@ def get_optimization_instruction(platform, media_type):
     # Diccionario de reglas basado en documentación técnica 2026
     # Clave compuesta: "PLATAFORMA|TIPO_MEDIO"
     # Usamos '|' como separador para evitar conflictos.
-    
+
     instructions = {
         # CASO: Instagram (Feed) + Carrusel
         "Instagram (Feed)|Carrusel": """
         OPTIMIZACIÓN: Estructura de Carrusel Educativo.
+        * Formato técnico: PROHIBIDO usar Markdown (**negrita**). Usa MAYÚSCULAS para resaltar.
+        * Enlaces: NO pongas URLs. Escribe "Link en Bio" o "Comenta FUEGO".
         * Objetivo: Maximizar 'Guardados' (Saves).
         * Estructura: Genera texto para 8-10 diapositivas secuenciales.
         * Slide 1: Gancho visual de alto contraste (<10 palabras).
@@ -49,46 +98,63 @@ def get_optimization_instruction(platform, media_type):
         * Caption: Estilo micro-blogging. Primera frase debe ser un gancho SEO.
         """,
 
-        # CASO: Instagram (Stories) + Vídeo / Foto (Aplica a ambos)
+        # CASO: Instagram (Stories) - Vídeo/Foto
         "Instagram (Stories)|Vídeo": """
         OPTIMIZACIÓN: Retención y Fidelización.
         * Tono: Auténtico, 'crudo' y conversacional.
         * Interacción: DEBES sugerir explícitamente qué Sticker usar (Encuesta, Caja de Preguntas, Tu Turno).
-        * Objetivo: Generar respuesta directa (DM) o toque en sticker.
         * Duración/Texto: Breve, directo, sin hashtags.
+        * Formato: Texto plano.
+        * Enlaces: NO escribas la URL. Indica "Usa el Sticker de Enlace".
+        * Objetivo: Generar respuesta directa (DM) o toque en sticker.
         """,
         "Instagram (Stories)|Foto": """
         OPTIMIZACIÓN: Retención y Fidelización.
         * Tono: Auténtico, 'crudo' y conversacional.
         * Interacción: DEBES sugerir explícitamente qué Sticker usar (Encuesta, Caja de Preguntas, Tu Turno).
-        * Objetivo: Generar respuesta directa (DM) o toque en sticker.
         * Duración/Texto: Breve, directo, sin hashtags.
+        * Formato: Texto plano.
+        * Enlaces: NO escribas la URL. Indica "Usa el Sticker de Enlace".
+        * Objetivo: Generar respuesta directa (DM) o toque en sticker.
+        """,
+        
+        # CASO: Instagram (Feed) - Genérico (Si existiera vídeo en feed)
+        "Instagram (Feed)|Vídeo": """
+        OPTIMIZACIÓN: Reels / Feed Video.
+        * Formato: Texto plano estricto (Sin negritas). Usa Emojis y SALTOS DE LÍNEA.
+        * Enlaces: PROHIBIDO poner URLs en el texto. Usa "Link en la Bio".
+        * CTA: Pide que visiten el perfil.
         """,
 
         # CASO: TikTok + Vídeo
         "TikTok|Vídeo": """
         OPTIMIZACIÓN: Motor de Búsqueda y Retención (SEO + Watch Time).
         * Gancho: Escribe un gancho (visual/auditivo) para los primeros 2 segundos. Debe ser disruptivo.
-        * SEO: La descripción debe actuar como meta-data. Incluye palabras clave long-tail naturales en el texto.
         * Texto en Pantalla: Sugiere keywords para poner sobre el vídeo (para el OCR de TikTok).
         * Hashtags: Usa la regla 3-3-3 (3 amplios, 3 nicho, 3 específicos).
+        * Formato: Texto plano estricto.
+        * Enlaces: NO pongas URLs. "Link en perfil".
+        * SEO: La descripción debe actuar como meta-data. Incluye palabras clave long-tail naturales en el texto.
         """,
 
         # CASO: Facebook + Vídeo
         "Facebook|Vídeo": """
         OPTIMIZACIÓN: Discovery Engine.
-        * Formato: Tratamiento de Reel unificado.
+        * Formato: Tratamiento de Reel unificado en Texto plano.
         * Narrativa: Estructura de historia completa (Inicio-Nudo-Desenlace) para retener +90 segundos.
         * Tono: Más universal/emocional, menos jerga Gen Z.
-        * Hashtags: MÁXIMO 1 o ninguno. Facebook penaliza el exceso.
+        * Enlaces: SÍ puedes poner URLs completas al final del post (son clicables).
+        * Hashtags: Máximo 1 o ninguno. Facebook penaliza el exceso.
         """,
 
-        # CASO: YouTube (Shorts) + Vídeo
+        # CASO: YouTube Shorts + Vídeo
         "YouTube (Shorts)|Vídeo": """
         OPTIMIZACIÓN: Tráfico y Suscripción.
         * Loop: El guion debe terminar de forma que enlace con el principio (Loop perfecto).
         * CTA: Enfocado a 'Suscribirse' o 'Ver vídeo relacionado'.
         * SEO: Título de <60 caracteres cargado de intención de búsqueda.
+        * Formato: Texto plano.
+        * Enlaces: NO en el título. Ponlos en comentario fijado o descripción.
         """,
 
         # CASO: YouTube (Video) + Vídeo
@@ -97,25 +163,29 @@ def get_optimization_instruction(platform, media_type):
         * Estructura: Divide el guion en 'Capítulos' claros con marcas de tiempo sugeridas.
         * Descripción: Primeros 150 caracteres con la keyword principal.
         * Título: Optimizado para CTR (Click Through Rate).
+        * Formato: Texto plano.
+        * Enlaces: NO en el título. Ponlos en comentario fijado o descripción.
         """,
 
         # CASO: WhatsApp Channel + Solo Texto
         "WhatsApp Channel|Solo Texto": """
         OPTIMIZACIÓN: Boletín de Alta Fricción.
         * Longitud: ESTRICTAMENTE menos de 500 caracteres.
-        * Formato: Usa negritas (*texto*) para titulares.
         * Interacción: Pide reacción con Emojis específicos (ej: 'Pulsa 🔥').
         * Prohibido: No usar hashtags. No pedir comentarios (es unidireccional).
+        * Formato: USA Markdown de WhatsApp (*negrita* para títulos, _cursiva_).
+        * Enlaces: URLs completas y clicables.
         """
     }
 
     # Construir clave de búsqueda
     key = f"{platform}|{media_type}"
-
+    
     # Retornar instrucción específica o un fallback genérico si la combinación no tiene regla estricta
     return instructions.get(key, f"""
     OPTIMIZACIÓN: Estándar para {platform}.
-    * Formato: Adaptado a {media_type}.
+    * FORMATO: Adaptado a {media_type}. Si es Instagram/TikTok -> SOLO TEXTO PLANO (Sin negritas). Si es WhatsApp -> Markdown OK.
+    * ENLACES: Si es Instagram/TikTok -> "Link en Bio". Si es Facebook/YT -> URL completa al final.
     * Objetivo: Maximizar engagement según las mejores prácticas generales de la plataforma.
     * CTA: Claro y directo.
     """)
@@ -468,7 +538,7 @@ st.markdown(f"""
     </div>
     """, unsafe_allow_html=True)
 
-st.markdown("Generador de copys con **RAG** (Base de Conocimiento) y **Estilo Arrojer**.")
+st.markdown("Generador de copys con **RAG**, **Estilo Arrojer** y **Optimización de Formato**.")
 
 # --- Barra Lateral: Configuración General ---
 with st.sidebar:
@@ -514,72 +584,69 @@ specific_data = {}
 
 with st.form("main_form"):
     st.subheader("📝 Detalles del Contenido")
-    
+
     col1, col2 = st.columns(2)
-    
+
     # Campos comunes para cualquier tipo de publicación
     with col1:
-        visual_context = st.text_area("Contexto Visual (¿Qué se ve?)", placeholder="Ej: Foto de Guille haciendo splash, primer plano guitarra...")
+        visual_context = st.text_area("Contexto Visual (¿Qué se ve?)", placeholder="Ej: Foto de Guille haciendo splash...")
     with col2:
-        user_instructions = st.text_area("Instrucciones Extra", placeholder="Ej: Haz énfasis en que es gratis, o menciona a tal persona...")
+        user_instructions = st.text_area("Instrucciones Extra", placeholder="Ej: Haz énfasis en que es gratis...")
 
     st.markdown("### 🎯 Datos Específicos")
 
     # Lógica condicional para mostrar solo los campos necesarios
     if reason == "1. Concierto":
         c1, c2 = st.columns(2)
-        date = c1.text_input("Fecha", placeholder="DD/MM")
-        city = c2.text_input("Ciudad")
-        venue = c1.text_input("Lugar/Sala")
-        
-        link_type = c2.radio("Tipo de Enlace", ["Venta de Entradas", "Ubicación/Web Sala (Sin venta)"], horizontal=True)
-        link_url = st.text_input("URL del enlace")
-        
-        specific_data = {"date": date, "city": city, "venue": venue, "link_type": link_type, "link_url": link_url}
-
+        specific_data = {
+            "date": c1.text_input("Fecha", placeholder="DD/MM"),
+            "city": c2.text_input("Ciudad"),
+            "venue": c1.text_input("Lugar/Sala"),
+            "link_type": c2.radio("Tipo de Enlace", ["Venta de Entradas", "Ubicación/Web Sala"], horizontal=True),
+            "link_url": st.text_input("URL del enlace")
+        }
     elif reason == "2. Anuncio de Novedad":
-        news_desc = st.text_area("¿Qué ha pasado?", placeholder="Nuevo integrante, nuevo equipo, firma con agencia...")
-        tags = st.text_input("Etiquetas / Menciones")
-        specific_data = {"description": news_desc, "tags": tags}
-
+        specific_data = {
+            "description": st.text_area("¿Qué ha pasado?"),
+            "tags": st.text_input("Etiquetas / Menciones")
+        }
     elif reason == "3. Engagement / Busqueda de Likes":
-        hook = st.text_input("Gancho o Idea principal", placeholder="Broma interna, pregunta a fans...")
-        specific_data = {"hook": hook}
-
+        specific_data = {"hook": st.text_input("Gancho o Idea principal")}
     elif reason == "4. Próximo Lanzamiento (Pre-save)":
         c1, c2 = st.columns(2)
-        title = c1.text_input("Título")
-        date_release = c2.text_input("Fecha Lanzamiento")
-        type_release = c1.selectbox("Tipo", ["Single", "Videoclip", "Álbum"])
-        link_presave = c2.text_input("Link Pre-save")
-        specific_data = {"title": title, "release_date": date_release, "type": type_release, "link": link_presave}
-
+        specific_data = {
+            "title": c1.text_input("Título"),
+            "release_date": c2.text_input("Fecha Lanzamiento"),
+            "type": c1.selectbox("Tipo", ["Single", "Videoclip", "Álbum"]),
+            "link": c2.text_input("Link Pre-save")
+        }
     elif reason == "5. Lanzamiento (Ya disponible)":
         c1, c2 = st.columns(2)
-        title = c1.text_input("Título")
-        type_release = c2.selectbox("Tipo", ["Single", "Videoclip", "Álbum"])
-        link_listen = st.text_input("Link Escucha/Ver")
-        specific_data = {"title": title, "type": type_release, "link": link_listen}
-
+        specific_data = {
+            "title": c1.text_input("Título"),
+            "type": c2.selectbox("Tipo", ["Single", "Videoclip", "Álbum"]),
+            "link": st.text_input("Link Escucha/Ver")
+        }
     elif reason == "6. Crónica de Concierto Pasado":
         c1, c2 = st.columns(2)
-        city_past = c1.text_input("Ciudad/Sala")
-        highlight = c2.text_input("Dato destacado", placeholder="Sold out, anécdota...")
-        link_cronica = st.text_input("Link (si hay video/fotos)")
-        specific_data = {"city": city_past, "highlight": highlight, "link": link_cronica}
-
+        specific_data = {
+            "city": c1.text_input("Ciudad/Sala"),
+            "highlight": c2.text_input("Dato destacado"),
+            "link": st.text_input("Link (si hay video/fotos)")
+        }
     elif reason == "7. Merchandising / Tienda":
         c1, c2 = st.columns(2)
-        product = c1.text_input("Producto", placeholder="Camiseta, CD...")
-        price = c2.text_input("Precio / Oferta (Opcional)")
-        link_shop = st.text_input("Link Tienda")
-        specific_data = {"product": product, "price": price, "link": link_shop}
-
+        specific_data = {
+            "product": c1.text_input("Producto"),
+            "price": c2.text_input("Precio"),
+            "link": st.text_input("Link Tienda")
+        }
     elif reason == "8. Prensa / Entrevistas":
-        media_name = st.text_input("Medio / Programa")
-        link_media = st.text_input("Link a la entrevista/noticia")
-        quote = st.text_area("Cita destacada (Opcional)")
-        specific_data = {"media_name": media_name, "link": link_media, "quote": quote}
+        specific_data = {
+            "media_name": st.text_input("Medio / Programa"),
+            "link": st.text_input("Link a la entrevista/noticia"),
+            "quote": st.text_area("Cita destacada")
+        }
 
     # Botón de Acción Principal
     submitted = st.form_submit_button("🔥 Generar Copy Arrojer")
@@ -590,24 +657,20 @@ if submitted:
     if not os.getenv("OPENROUTER_API_KEY"):
         st.error("❌ Falta la API Key en el archivo .env")
     else:
-        with st.spinner("🎸 Afinando guitarras, leyendo la agenda y consultando la base de datos..."):
+        with st.spinner("🎸 Afinando guitarras, leyendo la agenda y aplicando filtro anti-markdown..."):
             try:
                 # 1. Inicializar la cadena de LangChain
                 chain = get_chain()
-                
                 # 2. Obtener datos auxiliares
                 # Descargar datos de agenda en tiempo real
                 agenda_text = fetch_agenda_data()
-                # Preparar datos para el prompt
-                specific_data_str = str(specific_data)
                 # Obtener fecha actual en formato legible
                 today_str = datetime.now().strftime("%d/%m/%Y")
-                
                 # 3. Obtener instrucción de optimización
                 # Calculamos la regla técnica según lo que el usuario eligió
                 opt_instruction = get_optimization_instruction(platform, media_type)
 
-                # 4. Invocar al Agente con todos los datos necesarios
+                 # 4. Invocar al Agente con todos los datos necesarios
                 response = chain.invoke({
                     "platform": platform,
                     "media_type": media_type,
@@ -621,31 +684,35 @@ if submitted:
                     "optimization_instruction": opt_instruction
                 })
                 
+                # --- LIMPIEZA FINAL ---
+                # Pasamos el texto generado por el filtro para asegurar formato correcto
+                final_clean_text = clean_format_for_platform(response.copy_text, platform)
+                
                 # 5. Renderizar Resultados (Estilo Tarjeta)
                 st.success("¡Copy Generado con éxito! 🤘")
                 
                 st.markdown("### 📋 Copy Final")
                 
-                with st.container():
-                    st.code(response.copy_text, language="markdown")
+                # Usamos text_area para facilitar el copiado (sin formato de código)
+                st.text_area("Texto optimizado:", value=final_clean_text, height=300)
                 
                 # Columnas para metadatos (Hashtags y Sugerencia visual)
                 c1, c2 = st.columns(2)
                 with c1:
-                    st.markdown("""
+                    st.markdown(f"""
                     <div style="background-color: #1a1a1a; padding: 15px; border-radius: 10px; border: 1px solid #333;">
                         <h4 style="color: #e74c3c; margin: 0;">#️⃣ Hashtags</h4>
-                        <p style="margin-top: 5px; font-size: 0.9em;">{}</p>
+                        <p style="margin-top: 5px; font-size: 0.9em;">{response.hashtags}</p>
                     </div>
-                    """.format(response.hashtags), unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
                     
                 with c2:
-                    st.markdown("""
+                    st.markdown(f"""
                     <div style="background-color: #1a1a1a; padding: 15px; border-radius: 10px; border: 1px solid #333;">
                         <h4 style="color: #e74c3c; margin: 0;">💡 Idea Visual</h4>
-                        <p style="margin-top: 5px; font-size: 0.9em;">{}</p>
+                        <p style="margin-top: 5px; font-size: 0.9em;">{response.visual_suggestion}</p>
                     </div>
-                    """.format(response.visual_suggestion), unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
 
             except Exception as e:
                 st.error(f"Error al generar: {str(e)}")
